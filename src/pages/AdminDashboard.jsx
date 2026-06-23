@@ -44,6 +44,7 @@ export default function AdminDashboard() {
     const [filterDateStart, setFilterDateStart] = useState('');
     const [filterDateEnd, setFilterDateEnd] = useState('');
     const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         const zonesRef = ref(db, 'zones');
@@ -97,6 +98,16 @@ export default function AdminDashboard() {
         if (filterDistrict) res = res.filter(item => item.districtId === filterDistrict);
         if (filterDateStart) res = res.filter(item => item.dateOfWork >= filterDateStart);
         if (filterDateEnd) res = res.filter(item => item.dateOfWork <= filterDateEnd);
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            res = res.filter(item => 
+                (item.districtName && item.districtName.toLowerCase().includes(term)) ||
+                (item.resource && item.resource.toLowerCase().includes(term)) ||
+                (item.bookSerial && item.bookSerial.toLowerCase().includes(term)) ||
+                (item.model64Number && item.model64Number.toLowerCase().includes(term)) ||
+                (zones[item.zoneId]?.name && zones[item.zoneId].name.toLowerCase().includes(term))
+            );
+        }
 
         res.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
@@ -109,7 +120,7 @@ export default function AdminDashboard() {
         }), { amount: 0, cash: 0, bank: 0, amount64: 0, count: 0 });
 
         return { filteredData: res, totals: t };
-    }, [data, districts, filterZone, filterDistrict, filterDateStart, filterDateEnd]);
+    }, [data, districts, zones, filterZone, filterDistrict, filterDateStart, filterDateEnd, searchTerm]);
 
     const aggregatedMonthly = useMemo(() => {
         const result = {};
@@ -378,6 +389,8 @@ export default function AdminDashboard() {
                             <input
                                 type="text"
                                 placeholder="Search records..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
                                 className="bg-gray-100 border-none rounded-full py-2 pl-10 pr-4 text-sm w-64 outline-none focus:ring-2 focus:ring-accent/20"
                             />
                         </div>
@@ -388,6 +401,54 @@ export default function AdminDashboard() {
                 </header>
 
                 <div className="content-body animate-fade-in">
+                    {['overview', 'reports'].includes(activeTab) && (
+                        <div className="card mb-8 border-l-4 border-accent">
+                            <div className="flex flex-wrap gap-6 items-end">
+                                <div className="flex-1 min-w-[200px]">
+                                    <label className="text-[11px] font-bold text-muted uppercase ml-1">Zone</label>
+                                    <select
+                                        className="input-field mt-1"
+                                        value={filterZone}
+                                        onChange={e => { setFilterZone(e.target.value); setFilterDistrict(''); }}
+                                    >
+                                        <option value="">All Zones</option>
+                                        {Object.entries(zones).map(([id, z]) => (
+                                            <option key={id} value={id}>{z.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex-1 min-w-[200px]">
+                                    <label className="text-[11px] font-bold text-muted uppercase ml-1">District</label>
+                                    <select
+                                        className="input-field mt-1"
+                                        value={filterDistrict}
+                                        onChange={e => setFilterDistrict(e.target.value)}
+                                        disabled={!filterZone}
+                                    >
+                                        <option value="">All Districts</option>
+                                        {availableDistricts.map(([id, d]) => (
+                                            <option key={id} value={id}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex-1 min-w-[150px]">
+                                    <label className="text-[11px] font-bold text-muted uppercase ml-1">From</label>
+                                    <input type="date" className="input-field mt-1" value={filterDateStart} onChange={e => setFilterDateStart(e.target.value)} />
+                                </div>
+                                <div className="flex-1 min-w-[150px]">
+                                    <label className="text-[11px] font-bold text-muted uppercase ml-1">To</label>
+                                    <input type="date" className="input-field mt-1" value={filterDateEnd} onChange={e => setFilterDateEnd(e.target.value)} />
+                                </div>
+                                <button
+                                    className="p-3 text-muted hover:text-red-500 transition-colors"
+                                    onClick={() => { setFilterZone(''); setFilterDistrict(''); setFilterDateStart(''); setFilterDateEnd(''); }}
+                                    title="Clear Filters"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {activeTab === 'overview' && (
                         <div>
                             <h1 className="text-2xl font-extrabold text-text-main mb-8">System Overview</h1>
@@ -490,53 +551,7 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
-                            {/* Filters Header */}
-                            <div className="card mb-8 border-l-4 border-accent">
-                                <div className="flex flex-wrap gap-6 items-end">
-                                    <div className="flex-1 min-w-[200px]">
-                                        <label className="text-[11px] font-bold text-muted uppercase ml-1">Zone</label>
-                                        <select
-                                            className="input-field mt-1"
-                                            value={filterZone}
-                                            onChange={e => { setFilterZone(e.target.value); setFilterDistrict(''); }}
-                                        >
-                                            <option value="">All Zones</option>
-                                            {Object.entries(zones).map(([id, z]) => (
-                                                <option key={id} value={id}>{z.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="flex-1 min-w-[200px]">
-                                        <label className="text-[11px] font-bold text-muted uppercase ml-1">District</label>
-                                        <select
-                                            className="input-field mt-1"
-                                            value={filterDistrict}
-                                            onChange={e => setFilterDistrict(e.target.value)}
-                                            disabled={!filterZone}
-                                        >
-                                            <option value="">All Districts</option>
-                                            {availableDistricts.map(([id, d]) => (
-                                                <option key={id} value={id}>{d.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="flex-1 min-w-[150px]">
-                                        <label className="text-[11px] font-bold text-muted uppercase ml-1">From</label>
-                                        <input type="date" className="input-field mt-1" value={filterDateStart} onChange={e => setFilterDateStart(e.target.value)} />
-                                    </div>
-                                    <div className="flex-1 min-w-[150px]">
-                                        <label className="text-[11px] font-bold text-muted uppercase ml-1">To</label>
-                                        <input type="date" className="input-field mt-1" value={filterDateEnd} onChange={e => setFilterDateEnd(e.target.value)} />
-                                    </div>
-                                    <button
-                                        className="p-3 text-muted hover:text-red-500 transition-colors"
-                                        onClick={() => { setFilterZone(''); setFilterDistrict(''); setFilterDateStart(''); setFilterDateEnd(''); }}
-                                        title="Clear Filters"
-                                    >
-                                        <X size={20} />
-                                    </button>
-                                </div>
-                            </div>
+                            
 
                             {/* Data Table */}
                             <div className="card p-0 overflow-hidden">
