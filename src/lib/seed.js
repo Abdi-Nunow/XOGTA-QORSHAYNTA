@@ -21,6 +21,7 @@ export const seedDatabase = async () => {
         // Regional Revenue
         'somaliregional': { name: 'Somali Regional Revenue', zoneId: 'regional', username: 'somaliregional', password: 'regionalpassword' },
         // Faafan
+        'jigjigacity': { name: 'Jigjiga (City Council)', zoneId: 'fafan', username: 'jigjigacity', password: 'password123' },
         'shabeley': { name: 'Shabeley', zoneId: 'fafan', username: 'shabeley', password: 'password123' },
         'awbare': { name: 'Awbare', zoneId: 'fafan', username: 'awbare', password: 'password123' },
         'gursum': { name: 'Gursum', zoneId: 'fafan', username: 'gursum', password: 'password123' },
