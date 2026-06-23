@@ -303,7 +303,181 @@ export default function AdminDashboard() {
         link.click();
     };
 
-    const [openMenu, setOpenMenu] = useState(null);
+        const [openMenu, setOpenMenu] = useState(null);
+
+    // Helper to get months in the filter range
+    const getMonthsInRange = () => {
+        let start = filterDateStart ? filterDateStart.slice(0, 7) : "";
+        let end = filterDateEnd ? filterDateEnd.slice(0, 7) : "";
+        
+        if (!start || !end) {
+            // Default to last 4 months from today
+            const months = [];
+            const d = new Date();
+            for (let i = 3; i >= 0; i--) {
+                const temp = new Date(d.getFullYear(), d.getMonth() - i, 1);
+                months.push(temp.toISOString().slice(0, 7));
+            }
+            return months;
+        }
+
+        const months = [];
+        let current = new Date(start + "-02"); // use day 2 to avoid timezone shifts
+        const last = new Date(end + "-02");
+        while (current <= last) {
+            months.push(current.toISOString().slice(0, 7));
+            current.setMonth(current.getMonth() + 1);
+        }
+        return months;
+    };
+
+    // Helper to calculate planning totals for the range
+    const getMonthlyAggregateForRange = (months) => {
+        let planTotal = 0;
+        let actualTotal = 0;
+
+        Object.entries(monthlyData).forEach(([distId, yearMonthMap]) => {
+            const dInfo = districts[distId] || {};
+            const zoneId = dInfo.zoneId;
+
+            // Apply Zone/District filters
+            if (filterZone && zoneId !== filterZone) return;
+            if (filterDistrict && distId !== filterDistrict) return;
+
+            months.forEach(month => {
+                const monthReport = yearMonthMap[month];
+                if (!monthReport || !monthReport.data) return;
+
+                if (Array.isArray(monthReport.data)) {
+                    monthReport.data.forEach(item => {
+                        planTotal += (parseFloat(item.plan) || 0);
+                        actualTotal += (parseFloat(item.actual) || 0);
+                    });
+                } else {
+                    Object.entries(monthReport.data).forEach(([_, vals]) => {
+                        planTotal += (parseFloat(vals.plan) || 0);
+                        actualTotal += (parseFloat(vals.actual) || 0);
+                    });
+                }
+            });
+        });
+
+        return { plan: planTotal, actual: actualTotal };
+    };
+
+    // Export Dashboard PDF Summary
+    const exportDashboardSummaryPDF = () => {
+        const doc = new jsPDF();
+        
+        // Title
+        doc.setFontSize(22);
+        doc.setTextColor(26, 35, 126); // Navy color
+        doc.text("Xafiiska Dakhliga DDS", 20, 25);
+        doc.setFontSize(16);
+        doc.text("Aggregated System Summary Report", 20, 33);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Exported on: ${new Date().toLocaleString()}`, 20, 40);
+        doc.line(20, 42, 190, 42);
+
+        // Filter details
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text(`Zone Filter: ${filterZone ? (zones[filterZone]?.name || filterZone) : 'All Zones'}`, 20, 52);
+        doc.text(`District Filter: ${filterDistrict ? (districts[filterDistrict]?.name || filterDistrict) : 'All Districts'}`, 20, 59);
+        doc.text(`Date Range: ${filterDateStart || 'Beginning'} to ${filterDateEnd || 'Today'}`, 20, 66);
+        
+        doc.line(20, 70, 190, 70);
+
+        // Section 1: Daily Submissions
+        doc.setFillColor(245, 247, 250);
+        doc.rect(20, 76, 170, 55, 'F');
+        doc.setFontSize(13);
+        doc.setTextColor(26, 35, 126);
+        doc.text("Daily Submissions Summary", 25, 86);
+        
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text(`Total Submissions: ${totals.count}`, 25, 96);
+        doc.text(`Total Volume Collected: ${totals.amount.toLocaleString()} ETB`, 25, 104);
+        doc.text(`Cash Intake: ${totals.cash.toLocaleString()} ETB`, 25, 112);
+        doc.text(`Bank Transfers: ${totals.bank.toLocaleString()} ETB`, 25, 120);
+
+        // Section 2: Monthly Planning Targets
+        const months = getMonthsInRange();
+        const monthlyAgg = getMonthlyAggregateForRange(months);
+        const realizationRate = monthlyAgg.plan > 0 ? ((monthlyAgg.actual / monthlyAgg.plan) * 100).toFixed(1) : "0.0";
+
+        doc.setFillColor(240, 248, 255);
+        doc.rect(20, 138, 170, 55, 'F');
+        doc.setFontSize(13);
+        doc.setTextColor(26, 35, 126);
+        doc.text("Monthly Budget Planning Summary", 25, 148);
+        
+        doc.setFontSize(11);
+        doc.setTextColor(0);
+        doc.text(`Months Included: ${months.join(', ')}`, 25, 158);
+        doc.text(`Aggregated Budget Plan: ${monthlyAgg.plan.toLocaleString()} ETB`, 25, 166);
+        doc.text(`Aggregated Actual Performance: ${monthlyAgg.actual.toLocaleString()} ETB`, 25, 174);
+        doc.text(`Performance Realization Rate: ${realizationRate}%`, 25, 182);
+
+        // Footer
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text("Xogta Qorshaynta - Somali Region Revenue Office", 20, 280);
+
+        doc.save(`System_Summary_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+    };
+
+    // Export Dashboard Excel Summary
+    const exportDashboardSummaryExcel = () => {
+        const months = getMonthsInRange();
+        const monthlyAgg = getMonthlyAggregateForRange(months);
+        const realizationRate = monthlyAgg.plan > 0 ? ((monthlyAgg.actual / monthlyAgg.plan) * 100).toFixed(2) : 0;
+
+        const summaryData = [
+            { "Metric": "Report Export Date", "Value": new Date().toLocaleString() },
+            { "Metric": "Selected Zone", "Value": filterZone ? (zones[filterZone]?.name || filterZone) : "All Zones" },
+            { "Metric": "Selected District", "Value": filterDistrict ? (districts[filterDistrict]?.name || filterDistrict) : "All Districts" },
+            { "Metric": "Date Range", "Value": `${filterDateStart || 'Beginning'} to ${filterDateEnd || 'Today'}` },
+            { "Metric": "", "Value": "" },
+            { "Metric": "=== DAILY SUBMISSIONS ===", "Value": "" },
+            { "Metric": "Total Submissions Count", "Value": totals.count },
+            { "Metric": "Total Volume Collected (ETB)", "Value": totals.amount },
+            { "Metric": "Total Cash Portion (ETB)", "Value": totals.cash },
+            { "Metric": "Total Bank Portion (ETB)", "Value": totals.bank },
+            { "Metric": "", "Value": "" },
+            { "Metric": "=== MONTHLY PLANNING TARGETS ===", "Value": "" },
+            { "Metric": "Months Count Included", "Value": months.length },
+            { "Metric": "Aggregated Budget Plan (ETB)", "Value": monthlyAgg.plan },
+            { "Metric": "Aggregated Actual Performance (ETB)", "Value": monthlyAgg.actual },
+            { "Metric": "Performance Realization Rate (%)", "Value": realizationRate }
+        ];
+
+        const submissionsDetailed = filteredData.map(item => ({
+            "Date of Work": item.dateOfWork,
+            "Zone": zones[item.zoneId]?.name || 'N/A',
+            "District": item.districtName,
+            "Resource": item.resource,
+            "Serial Number": item.bookSerial,
+            "Model 64 Number": item.model64Number,
+            "Total Amount": item.amount,
+            "Cash Amount": item.cashAmount,
+            "Bank Amount": item.bankAmount,
+            "Bank Name": item.bankName || 'N/A'
+        }));
+
+        const wb = XLSX.utils.book_new();
+        
+        const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(wb, wsSummary, "Overview Summary");
+
+        const wsSubmissions = XLSX.utils.json_to_sheet(submissionsDetailed);
+        XLSX.utils.book_append_sheet(wb, wsSubmissions, "Submissions List");
+
+        XLSX.writeFile(wb, `System_Summary_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
 
     return (
         <div className="app-container">
@@ -451,7 +625,23 @@ export default function AdminDashboard() {
                     )}
                     {activeTab === 'overview' && (
                         <div>
-                            <h1 className="text-2xl font-extrabold text-text-main mb-8">System Overview</h1>
+                            <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
+                                <h1 className="text-2xl font-extrabold text-text-main">System Overview</h1>
+                                <div className="flex gap-2">
+                                    <button 
+                                        className="btn bg-white border border-border hover:bg-red-50 text-red-600 hover:text-red-700 text-xs font-bold py-2 px-3 flex items-center gap-1.5 shadow-sm rounded-lg"
+                                        onClick={exportDashboardSummaryPDF}
+                                    >
+                                        <FileText size={14} /> Export Summary PDF
+                                    </button>
+                                    <button 
+                                        className="btn bg-white border border-border hover:bg-green-50 text-green-600 hover:text-green-700 text-xs font-bold py-2 px-3 flex items-center gap-1.5 shadow-sm rounded-lg"
+                                        onClick={exportDashboardSummaryExcel}
+                                    >
+                                        <FileSpreadsheet size={14} /> Export Summary Excel
+                                    </button>
+                                </div>
+                            </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                                 <div className="card">
