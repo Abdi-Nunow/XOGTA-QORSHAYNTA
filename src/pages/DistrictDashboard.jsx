@@ -362,7 +362,7 @@ export default function DistrictDashboard() {
                 </nav>
 
                 <div className="sidebar-footer p-6 border-t border-white/10">
-                    <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">District</div>
+                    <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">{user?.districtId === 'somaliregional' ? 'Office' : 'District'}</div>
                     <div className="font-semibold text-accent mb-6 truncate">{user?.name}</div>
                     <button
                         onClick={logout}
@@ -383,7 +383,7 @@ export default function DistrictDashboard() {
                         </div>
                         <div>
                             <div className="font-bold text-text-main">Xogta Qorshaynta</div>
-                            <div className="text-[10px] text-muted uppercase tracking-wider">{user?.zoneId} / {user?.name}</div>
+                            <div className="text-[10px] text-muted uppercase tracking-wider">{user?.districtId === 'somaliregional' ? `Somali Region / ${user?.name}` : `${user?.zoneId} / ${user?.name}`}</div>
                         </div>
                     </div>
 
@@ -404,7 +404,7 @@ export default function DistrictDashboard() {
                 <div className="content-body animate-fade-in">
                     {activeTab === 'dashboard' && (
                         <div>
-                            <h1 className="text-2xl font-extrabold text-navy mb-8">District Overview</h1>
+                            <h1 className="text-2xl font-extrabold text-navy mb-8">{user?.districtId === 'somaliregional' ? 'Regional Revenue Overview' : 'District Overview'}</h1>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                 <div className="card flex items-center justify-between">

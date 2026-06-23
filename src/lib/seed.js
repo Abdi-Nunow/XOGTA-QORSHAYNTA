@@ -3,6 +3,7 @@ import { db } from "./firebase";
 
 export const seedDatabase = async () => {
     const zones = {
+        'regional': { name: 'Somali Regional Revenue' },
         'fafan': { name: 'Faafan' },
         'siti': { name: 'Siti' },
         'shabeele': { name: 'Shabeele' },
@@ -17,6 +18,8 @@ export const seedDatabase = async () => {
     };
 
     const districts = {
+        // Regional Revenue
+        'somaliregional': { name: 'Somali Regional Revenue', zoneId: 'regional', username: 'somaliregional', password: 'regionalpassword' },
         // Faafan
         'shabeley': { name: 'Shabeley', zoneId: 'fafan', username: 'shabeley', password: 'password123' },
         'awbare': { name: 'Awbare', zoneId: 'fafan', username: 'awbare', password: 'password123' },

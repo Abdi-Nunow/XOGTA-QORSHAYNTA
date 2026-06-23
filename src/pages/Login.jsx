@@ -160,13 +160,14 @@ export default function Login() {
                                     setError('');
                                     setSelectedZoneId('');
                                     setSelectedDistrictId('');
-                                    setUsername(val === 'admin' ? 'admin' : '');
+                                    setUsername(val === 'admin' ? 'admin' : (val === 'regional-revenue' ? 'somaliregional' : ''));
                                     setPassword('');
                                 }}
                                 required
                             >
                                 <option value="">Select Account Type...</option>
                                 <option value="admin" className="font-bold">Regional Admin (Admin)</option>
+                                <option value="regional-revenue" className="font-bold">Somali Regional Revenue</option>
                                 <option value="zones" className="font-bold">District Level (Zones)</option>
                             </select>
                         </div>
